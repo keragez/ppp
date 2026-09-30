@@ -1939,11 +1939,9 @@ run_program(const char *prog, char * const *args, int must_exist, void (*done)(v
      */
 #if defined(O_PATH)
     fd = open(prog, O_PATH);
-#elif defined(O_EXEC) && !defined(SOL2)
+#elif defined(O_EXEC)
     fd = open(prog, O_EXEC);
 #else
-    /* Solaris/illumos: a #! script is run as "interp /dev/fd/N", and the
-     * interpreter must read it through this fd, which O_EXEC forbids. */
     fd = open(prog, O_RDONLY);
 #endif
     if (fd < 0) {
