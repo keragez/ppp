@@ -2025,7 +2025,8 @@ run_program(const char *prog, char * const *args, int must_exist, void (*done)(v
 
 	snprintf(fdpath, sizeof(fdpath), "/dev/fd/%d", fd);
 	execve(fdpath, args, script_env);
-	if (errno == ENOENT) {
+	/* illumos: /dev/fd/N is not a regular file, exec gives EACCES */
+	if (errno == ENOENT || errno == EACCES) {
 	    snprintf(fdpath, sizeof(fdpath), "/proc/self/fd/%d", fd);
 	    execve(fdpath, args, script_env);
 	}
