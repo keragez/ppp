@@ -53,5 +53,12 @@ jobs:
           pkg list '*ppp*' || true
           exit 1
         fi
-        PPPD_TEST_GLOBAL_CONF=1 python3 ./runtests.py --always-log
+        rc=0
+        PPPD_TEST_GLOBAL_CONF=1 python3 ./runtests.py --always-log || rc=$?
+        # A script child that fails to exec can only report why via
+        # syslog (pppd's logfile is closed in the child).
+        echo "----- pppd syslog messages (/var/adm/messages) -----"
+        svcs system-log || true
+        grep pppd /var/adm/messages | tail -n 50 || true
+        exit $rc
         EOF
