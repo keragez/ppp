@@ -2005,6 +2005,15 @@ run_program(const char *prog, char * const *args, int must_exist, void (*done)(v
     /* run the program */
     update_script_environment();
 
+    /* DEBUG (dev branch only): is fd still open right before the exec? */
+    {
+	int fl = fcntl(fd, F_GETFD);
+	int e = errno;
+	reopen_log();
+	syslog(LOG_ERR, "DEBUG %s: fd=%d F_GETFD=%d (%s) strict=%d",
+	       prog, fd, fl, fl < 0 ? strerror(e) : "open", strict_script_checks);
+    }
+
     if (strict_script_checks) {
 #ifdef HAVE_FEXECVE
 	fexecve(fd, args, script_env);
