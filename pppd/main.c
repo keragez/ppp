@@ -1939,11 +1939,9 @@ run_program(const char *prog, char * const *args, int must_exist, void (*done)(v
      */
 #if defined(O_PATH)
     fd = open(prog, O_PATH);
-#elif defined(O_EXEC) && !defined(SOL2)
+#elif defined(O_EXEC)
     fd = open(prog, O_EXEC);
 #else
-    /* SOL2 execs "/dev/fd/N" below; a #! interpreter then reads the
-     * script through this fd, which O_EXEC would forbid. */
     fd = open(prog, O_RDONLY);
 #endif
     if (fd < 0) {
@@ -2017,16 +2015,28 @@ run_program(const char *prog, char * const *args, int must_exist, void (*done)(v
     }
 
     if (strict_script_checks) {
-#if defined(HAVE_FEXECVE) && !defined(SOL2)
-	/* illumos fexecve() fails with EFAULT for #! scripts */
+#if defined(SOL2)
+	/*
+	 * Solaris/illumos can't exec a #! script through its fd:
+	 * fexecve() fails with EFAULT, /dev/fd/N with EACCES, and
+	 * /proc/self/fd/N hangs.  Exec by path instead, but only if
+	 * the path still names the file ppp_check_access() vetted.
+	 */
+	struct stat fst, pst;
+
+	if (fstat(fd, &fst) == 0 && stat(prog, &pst) == 0
+	    && fst.st_dev == pst.st_dev && fst.st_ino == pst.st_ino)
+	    execve(prog, args, script_env);
+	else
+	    errno = ESTALE;
+#elif defined(HAVE_FEXECVE)
 	fexecve(fd, args, script_env);
 #else
 	char fdpath[32];
 
 	snprintf(fdpath, sizeof(fdpath), "/dev/fd/%d", fd);
 	execve(fdpath, args, script_env);
-	/* illumos: /dev/fd/N is not a regular file, exec gives EACCES */
-	if (errno == ENOENT || errno == EACCES) {
+	if (errno == ENOENT) {
 	    snprintf(fdpath, sizeof(fdpath), "/proc/self/fd/%d", fd);
 	    execve(fdpath, args, script_env);
 	}
