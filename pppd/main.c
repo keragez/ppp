@@ -1939,9 +1939,11 @@ run_program(const char *prog, char * const *args, int must_exist, void (*done)(v
      */
 #if defined(O_PATH)
     fd = open(prog, O_PATH);
-#elif defined(O_EXEC)
+#elif defined(O_EXEC) && !defined(SOL2)
     fd = open(prog, O_EXEC);
 #else
+    /* SOL2 execs "/dev/fd/N" below; a #! interpreter then reads the
+     * script through this fd, which O_EXEC would forbid. */
     fd = open(prog, O_RDONLY);
 #endif
     if (fd < 0) {
@@ -2015,7 +2017,8 @@ run_program(const char *prog, char * const *args, int must_exist, void (*done)(v
     }
 
     if (strict_script_checks) {
-#ifdef HAVE_FEXECVE
+#if defined(HAVE_FEXECVE) && !defined(SOL2)
+	/* illumos fexecve() fails with EFAULT for #! scripts */
 	fexecve(fd, args, script_env);
 #else
 	char fdpath[32];
@@ -2032,7 +2035,9 @@ run_program(const char *prog, char * const *args, int must_exist, void (*done)(v
 	execve(prog, args, script_env);
     }
     /* have to reopen the log, there's nowhere else for the message to go. */
+    ret = errno;	/* reopen_log() may clobber errno */
     reopen_log();
+    errno = ret;
     syslog(LOG_ERR, "Can't execute %s: %m", prog);
     closelog();
     _exit(99);
