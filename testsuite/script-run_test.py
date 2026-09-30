@@ -24,7 +24,7 @@ import time
 
 from pppfns import (
     IS_LINUX, IS_SUNOS, PPPD, SCRATCHDIR, PppPair, pppd_confdir,
-    require_link_env, test_fail, test_skipped, test_xfail,
+    require_link_env, test_fail, test_skipped
 )
 
 require_link_env()
@@ -91,13 +91,6 @@ def wait_for_hook(peer, marker, name, timeout=30):
             exec_failed = True
             detail = f'\npppd could not exec the script: {line.strip()}'
     msg = f'{path} did not run within {timeout}s{detail}'
-    if IS_SUNOS and exec_failed:
-        # Known 2.5.4 regression, not what this test guards: run_program()
-        # now fexecve()s an O_EXEC descriptor under strict-script-checks
-        # (the default), which fails for #! scripts on illumos. 2.5.3 and
-        # earlier exec'd by path.
-        test_xfail(f'{msg}\nknown issue: hook scripts are not executed on '
-                   'illumos under strict-script-checks (fexecve on O_EXEC fd)')
     test_fail(msg)
 
 
